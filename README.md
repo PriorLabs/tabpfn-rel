@@ -1,90 +1,82 @@
 # TabPFN-Rel
 
-TabPFN-Rel predicts entity outcomes from relational tables. It builds deep feature
-synthesis (DFS) features, adds optional calendar, history and text features, and
-fits TabPFN using random or recency-weighted contexts.
+TabPFN-Rel applies TabPFN to prediction tasks over relational databases. It follows
+relationships between tables, builds features with Deep Feature Synthesis, and
+uses TabPFN to predict outcomes for entities such as customers or sellers.
 
-This package contains the model and its search spaces. RelArena Core supplies the
-relational data contracts, feature cache, tuning and predictive interface.
+[Documentation](https://docs.priorlabs.ai/capabilities/relational) ·
+[Olist cookbook](https://docs.priorlabs.ai/cookbook/relational_predictions_tabpfn_rel) ·
+[Technical report](https://arxiv.org/abs/2608.16319)
 
-## Install
+## Installation
 
 Requires Python 3.11 or 3.12. Choose a backend:
 
 ```bash
-pip install "tabpfn-rel[local]"   # local TabPFN; GPU recommended
-pip install "tabpfn-rel[api]"     # hosted TabPFN; requires API authentication
+pip install "tabpfn-rel[api]"    # Hosted inference
+# Or: pip install "tabpfn-rel[local]"  # Local inference; GPU recommended
 ```
 
-Base `tabpfn-rel` installs the model code and RelArena Core. The RelArena benchmark
-package is optional. An inference extra supplies
-the DFS engine and the selected estimator backend. Backend authentication and model
-access follow TabPFN or tabpfn-client's own setup instructions.
+For hosted inference, authenticate before fitting:
 
-Try the [generated database example](examples/tiny_database.py) from a source checkout:
+```python
+from tabpfn_client import init
+
+init()
+```
+
+For local inference, follow the [model access guide](https://docs.priorlabs.ai/models/accessing-model-weights).
+
+## Try it on a real database
+
+The [Olist seller-churn example](examples/olist_seller_churn.py) uses seven tables
+from the Brazilian E-Commerce dataset. It predicts whether a seller active in the
+past 30 days will receive no orders in the next 30 days, then reports held-out
+ROC-AUC. The database schema and prediction task are included as YAML files.
+
+Clone the repository, then download the data with the Kaggle CLI (requires a
+Kaggle account and configured credentials):
 
 ```bash
-uv run --extra local python examples/tiny_database.py
+git clone https://github.com/PriorLabs/tabpfn-rel.git
+cd tabpfn-rel
+uvx kaggle datasets download -d olistbr/brazilian-ecommerce -p data/olist --unzip
+uv sync --extra api --group cpu
+uv run --no-sync python -c "from tabpfn_client import init; init()"
+OMP_NUM_THREADS=1 uv run --no-sync python examples/olist_seller_churn.py
 ```
 
-It creates four customers and their event history, fits the default configuration,
-and prints one prediction per customer.
+The default fits one configuration through the hosted API. Add `--n-trials 3` to
+try temporal tuning, or `--data-dir /path/to/olist` to use an existing download.
+Hosted fitting and prediction consume API quota.
 
-## Predict on your database
+For local inference, install with `uv sync --extra local` and run the script with
+`--backend local`. The [cookbook](https://docs.priorlabs.ai/cookbook/relational_predictions_tabpfn_rel)
+walks through the same task interactively, including caching and baseline comparisons.
 
-Define the database relationships and prediction task in YAML, following
-[RelArena's predictive interface](https://github.com/PriorLabs/relarena/blob/main/docs/predictive-task.md).
-Then:
+## Predict on your own database
+
+Define your tables, keys and timestamps in a database YAML file, then define the
+target and temporal splits in a task YAML file. The
+[task-definition guide](https://github.com/PriorLabs/relarena/blob/main/docs/predictive-task.md)
+describes these formats; the Olist example provides complete files to adapt.
 
 ```python
 from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec
 
-spec = PredictiveQuerySpec.from_yaml("task.yaml", data_dir="data")
-query = PredictiveQuery(spec).fit("tabpfn-rel-local", n_trials=0)
+spec = PredictiveQuerySpec.from_yaml("task.yaml", data_dir="data/")
+query = PredictiveQuery(spec).fit("tabpfn-rel-client", n_trials=0)
 predictions = query.predict()
 ```
 
-Use `tabpfn-rel-client` for the hosted backend. `n_trials=0` fits the default
-configuration once; a positive budget enables the shared temporal tuning protocol.
-API fits and predictions consume service quota. The predictive classes are the
-same classes exported by `relarena_core.userdb` and, when installed,
-`relarena.userdb`.
+Use `tabpfn-rel-local` for local inference. `n_trials=0` fits the default
+configuration; a positive budget enables temporal tuning.
 
-## Benchmark with RelArena
-
-```bash
-pip install "relarena[tabpfn-rel-local]"
-relarena --model tabpfn-rel-local --datasets rel-f1 --tasks driver-dnf --n-trials 1
-```
-
-For this fixed-grid model, the CLI uses `--n-trials 1` for the default configuration.
-Larger budgets also evaluate deeper DFS configurations. Unlike RPI, a zero CLI
-budget evaluates no grid configurations.
-
-`relarena[tabpfn-rel-api]` installs the hosted backend, selected with
-`--model tabpfn-rel-client`.
-
-The CLI and predictive interface discover installed models automatically. Direct
-registry users call discovery explicitly:
-
-```python
-from relarena_core import discover_models, registry
-
-discover_models()
-model_class = registry.get("tabpfn-rel-local")
-space = registry.search_space("tabpfn-rel-local")
-```
-
-For a custom training loop, import `TabPFNRelLocalModel`, `TabPFNRelClientModel`,
-and their `TABPFN_REL_LOCAL_SPACE` / `TABPFN_REL_CLIENT_SPACE` directly from
-`tabpfn_rel`. They implement RelArena's `fit` / `predict` model contract.
-Importing `tabpfn_rel` or `relarena_core` does not discover plugins or load
-estimator backends.
+The Relational Predictive Interface (RPI) comes from `relarena-core`, installed
+automatically. To benchmark TabPFN-Rel against other methods, see
+[RelArena](https://github.com/PriorLabs/relarena).
 
 ## Development
-
-The package depends on published `relarena-core` interfaces and does not require
-the RelArena benchmark package. Run from the repository root:
 
 ```bash
 uv sync --locked --group cpu
@@ -93,6 +85,5 @@ uv run --no-sync pre-commit run --all-files
 uv build
 ```
 
-The tests exercise feature and context behavior without downloading model weights
-or making hosted API requests. Integration tests use real DFS and a small test
-estimator to cover the predictive interface and temporal tuning.
+Tests cover feature generation, context selection, temporal tuning and prediction
+without model downloads or hosted API calls.
