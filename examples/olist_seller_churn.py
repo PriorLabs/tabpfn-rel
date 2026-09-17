@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec
+from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, TabPFNRel
 
 
 def prepare_olist_data(csv_dir: str) -> Path:
@@ -32,13 +32,14 @@ def prepare_olist_data(csv_dir: str) -> Path:
 
 def fit_predict_and_evaluate(
     spec: PredictiveQuerySpec,
-    model: str,
+    model: TabPFNRel,
     *,
     n_trials: int,
 ) -> None:
     """Fit the model and score sellers with observed test-window outcomes."""
-    pq = PredictiveQuery(spec).fit(model, n_trials=n_trials, seed=0)
-    preds = pq.predict()
+    pq = PredictiveQuery(spec)
+    model.fit(pq, n_trials=n_trials, seed=0)
+    preds = model.predict()
     labels = pq.compute_test_labels()
     scored = labels.merge(
         preds,
@@ -85,8 +86,5 @@ if __name__ == "__main__":
     spec = PredictiveQuerySpec.from_yaml(
         str(here / "olist_seller_churn.yaml"), data_dir=str(data_dir)
     )
-    model = {
-        "local": "tabpfn-rel-local",
-        "client": "tabpfn-rel-client",
-    }[args.backend]
+    model = TabPFNRel(model=args.backend)
     fit_predict_and_evaluate(spec, model=model, n_trials=args.n_trials)

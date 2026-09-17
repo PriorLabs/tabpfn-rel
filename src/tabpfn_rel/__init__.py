@@ -2,6 +2,7 @@
 
 from relarena_core.userdb import PredictiveQuery, PredictiveQuerySpec
 
+from tabpfn_rel.estimator import TabPFNRel
 from tabpfn_rel.model import (
     TABPFN_REL_CLIENT_SPACE,
     TABPFN_REL_LOCAL_SPACE,
@@ -15,6 +16,7 @@ __all__ = [
     "TABPFN_REL_LOCAL_SPACE",
     "PredictiveQuery",
     "PredictiveQuerySpec",
+    "TabPFNRel",
     "TabPFNRelClientModel",
     "TabPFNRelLocalModel",
     "TabPFNRelModel",

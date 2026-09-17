@@ -9,7 +9,7 @@ import pytest
 from relarena_core.registry import registry
 from relarena_core.userdb import PredictiveQuery as ArenaQuery
 
-from tabpfn_rel import PredictiveQuery, TabPFNRelLocalModel
+from tabpfn_rel import PredictiveQuery, TabPFNRel, TabPFNRelLocalModel
 
 
 @pytest.mark.parametrize("first", ["relarena_core", "tabpfn_rel"])
@@ -40,3 +40,13 @@ assert 'tabpfn_client' not in sys.modules
 def test_decorator_registration_and_shared_rpi() -> None:
     assert registry.get("tabpfn-rel-local") is TabPFNRelLocalModel
     assert PredictiveQuery is ArenaQuery
+
+
+def test_wrapper_rejects_unknown_backend() -> None:
+    with pytest.raises(ValueError, match="model must be"):
+        TabPFNRel(model="unknown")
+
+
+def test_wrapper_requires_fit_before_prediction() -> None:
+    with pytest.raises(RuntimeError, match="Call fit"):
+        TabPFNRel(model="client").predict()
