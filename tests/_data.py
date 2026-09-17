@@ -1,19 +1,8 @@
-"""Predict on a generated two-table database with local or hosted TabPFN.
+"""Small relational data for integration tests."""
 
-From this package directory, run
-``uv run --package tabpfn-rel --extra local python examples/tiny_database.py``.
-For the hosted backend, install the api extra and pass ``--backend client``.
-"""
-
-from __future__ import annotations
-
-import argparse
-import tempfile
 from pathlib import Path
 
 import pandas as pd
-
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec
 
 
 def write_database(directory: Path, task_type: str = "binary_classification") -> Path:
@@ -59,22 +48,3 @@ def write_database(directory: Path, task_type: str = "binary_classification") ->
         "  GROUP BY t.timestamp, c.customer_id\n"
     )
     return task
-
-
-def main() -> None:
-    """Generate data, fit the selected model and print its predictions."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backend", choices=["local", "client"], default="local")
-    parser.add_argument("--n-trials", type=int, default=0)
-    args = parser.parse_args()
-    with tempfile.TemporaryDirectory() as tmp:
-        task = write_database(Path(tmp))
-        spec = PredictiveQuerySpec.from_yaml(str(task), data_dir=tmp)
-        query = PredictiveQuery(spec, data_version="example-v1").fit(
-            f"tabpfn-rel-{args.backend}", n_trials=args.n_trials
-        )
-        print(query.predict().to_string(index=False))
-
-
-if __name__ == "__main__":
-    main()

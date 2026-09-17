@@ -12,3 +12,4 @@ dependency-licenses.md
 dist/
 build/
 *.egg-info/
+data/
