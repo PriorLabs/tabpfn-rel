@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from relarena_core.featurization import dfs
 from relarena_core.tfm import TFMSpec
 
 from tabpfn_rel import (
@@ -133,3 +134,52 @@ def test_wrapper_default_fit_and_failed_refit(
         model.fit(query)
     with pytest.raises(RuntimeError, match="Call fit"):
         model.predict(PredictiveQuery(entities="all", at_timestamp="test_timestamp"))
+
+
+def test_context_cache_reused_across_queries_and_fits(
+    query: PredictiveContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_dir = tmp_path / "shared-cache"
+    query.precompute_cache(cache_dir)
+    training_files = {
+        path: (path.stat().st_mtime_ns, path.read_bytes())
+        for path in cache_dir.rglob("*.parquet")
+    }
+    assert training_files
+    build_rdb = dfs._build_rdb
+
+    def forbid_build(*args: object, **kwargs: object) -> None:
+        pytest.fail("Cache hit rebuilt DFS features")
+
+    monkeypatch.setattr(dfs, "_CACHE", dfs._DepthCache())
+    monkeypatch.setattr(dfs, "_build_rdb", forbid_build)
+    fitted = query.fit("tabpfn-rel-local", n_trials=2, cache_dir=cache_dir)
+    first_model = fitted._model
+    monkeypatch.setattr(dfs, "_build_rdb", build_rdb)
+    first = PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+    second = PredictiveQuery(entities=["b"], at_timestamp="2004-11-15")
+    first_predictions = fitted.predict(first)
+    second_predictions = fitted.predict(second)
+    assert second_predictions.customer_id.tolist() == ["b"]
+    assert second_predictions.date.tolist() == [pd.Timestamp("2004-11-15")]
+    assert fitted._model is first_model
+    assert all(
+        (path.stat().st_mtime_ns, path.read_bytes()) == original
+        for path, original in training_files.items()
+    )
+    all_files = {path: path.stat().st_mtime_ns for path in cache_dir.rglob("*.parquet")}
+    monkeypatch.setattr(dfs, "_CACHE", dfs._DepthCache())
+    monkeypatch.setattr(dfs, "_build_rdb", forbid_build)
+    pd.testing.assert_frame_equal(first_predictions, fitted.predict(first))
+    pd.testing.assert_frame_equal(second_predictions, fitted.predict(second))
+    explicit = PredictiveQuery(entities="all", at_timestamp="2004-12-01")
+    pd.testing.assert_frame_equal(first_predictions, fitted.predict(explicit))
+    fresh = PredictiveContext.from_yaml(
+        tmp_path / "task.yaml", data_dir=tmp_path, data_version="test-v1"
+    )
+    other = fresh.fit("tabpfn-rel-client", n_trials=0, cache_dir=cache_dir)
+    assert other._model is not first_model
+    pd.testing.assert_frame_equal(first_predictions, fitted.predict(first))
+    assert {
+        path: path.stat().st_mtime_ns for path in cache_dir.rglob("*.parquet")
+    } == all_files
