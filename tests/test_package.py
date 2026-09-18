@@ -20,7 +20,8 @@ import {first}
 import relarena_core
 import tabpfn_rel
 assert set(relarena_core.registry.names()) == {{
-    'tabpfn-rel-local', 'tabpfn-rel-client'
+    'tabpfn-rel-local', 'tabpfn-rel-client-2026-08-15',
+    'tabpfn-rel-client-2026-09-18'
 }}
 assert 'relarena.models' not in sys.modules
 for name in ('tabpfn', 'tabpfn_client', 'fastdfs'):
@@ -29,7 +30,7 @@ relarena_core.discover_models()
 relarena_core.discover_models()
 local = relarena_core.registry.get('tabpfn-rel-local')
 assert local is tabpfn_rel.TabPFNRelLocalModel
-client = relarena_core.registry.get('tabpfn-rel-client')
+client = relarena_core.registry.get('tabpfn-rel-client-2026-08-15')
 assert client is tabpfn_rel.TabPFNRelClientModel
 assert 'tabpfn' not in sys.modules
 assert 'tabpfn_client' not in sys.modules
@@ -50,3 +51,8 @@ def test_wrapper_rejects_unknown_backend() -> None:
 def test_wrapper_requires_fit_before_prediction() -> None:
     with pytest.raises(RuntimeError, match="Call fit"):
         TabPFNRel(model="client").predict()
+
+
+def test_client_wrapper_selects_registered_model() -> None:
+    model = TabPFNRel(model="client")
+    assert registry.get(model._model).__name__ == "TabPFNRelClientModel"

@@ -12,11 +12,22 @@ from relarena_core.userdb import PredictiveQuery
 class TabPFNRel:
     """Fit a relational query with local or hosted TabPFN inference."""
 
-    def __init__(self, *, model: Literal["client", "local"]) -> None:
+    def __init__(
+        self,
+        *,
+        model: Literal["client", "local", "client-2026-08-15", "client-2026-09-18"],
+    ) -> None:
         """Select the inference backend."""
-        if model not in ("client", "local"):
-            raise ValueError("model must be 'client' or 'local'.")
-        self._model = f"tabpfn-rel-{model}"
+        if model not in ("client", "local", "client-2026-08-15", "client-2026-09-18"):
+            raise ValueError(
+                "model must be 'client', 'local', 'client-2026-08-15', "
+                "or 'client-2026-09-18'."
+            )
+        self._model = (
+            "tabpfn-rel-client-2026-08-15"
+            if model == "client"
+            else f"tabpfn-rel-{model}"
+        )
         self._query: PredictiveQuery | None = None
 
     def fit(
