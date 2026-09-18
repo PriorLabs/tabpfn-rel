@@ -44,10 +44,15 @@ def fit_predict_and_evaluate(
     """Fit the model and score sellers with observed test-window outcomes."""
     pq = PredictiveContext(spec)
     model.fit(pq, n_trials=n_trials, seed=0)
-    preds = model.predict(
-        PredictiveQuery(entities="all", at_timestamp="test_timestamp")
-    )
     labels = pq.compute_test_labels()
+    # For multiple test timestamps, see:
+    # https://github.com/PriorLabs/relarena/blob/adrian/context-query/examples/relbench_test_rows.py
+    preds = model.predict(
+        PredictiveQuery(
+            entities=labels[pq.task.entity_col].tolist(),
+            at_timestamp="test_timestamp",
+        )
+    )
     scored = labels.merge(
         preds,
         on=[pq.task.time_col, pq.task.entity_col],
