@@ -104,7 +104,10 @@ and `cache_dir` to `fit` to control tuning randomness and feature caching.
 
 Both query fields are required. Use `at_timestamp="test_timestamp"` for the
 context cutoff or an explicit date for another prediction anchor. The database
-remains frozen at the context cutoff even for later prediction anchors.
+remains frozen at the context cutoff, including for later anchors, to follow
+RelArena's fixed-snapshot evaluation protocol and prevent post-cutoff data from
+entering predictions. See
+[RelArena's temporal-validation protocol](https://github.com/PriorLabs/relarena/blob/main/docs/temporal-validation.md#why-the-database-cutoff-matters).
 
 To benchmark TabPFN-Rel against other methods, see
 [RelArena](https://github.com/PriorLabs/relarena).
