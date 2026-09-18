@@ -49,4 +49,6 @@ def test_wrapper_rejects_unknown_backend() -> None:
 
 def test_wrapper_requires_fit_before_prediction() -> None:
     with pytest.raises(RuntimeError, match="Call fit"):
-        TabPFNRel(model="client").predict()
+        TabPFNRel(model="client").predict(
+            PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+        )

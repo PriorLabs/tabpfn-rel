@@ -3,42 +3,52 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
-from relarena_core.userdb import PredictiveQuery
+from relarena_core.results import TrialResult
+from relarena_core.userdb import FittedPredictor, PredictiveContext, PredictiveQuery
 
 
 class TabPFNRel:
-    """Fit a relational query with local or hosted TabPFN inference."""
+    """Fit a relational context with local or hosted TabPFN inference."""
 
     def __init__(self, *, model: Literal["client", "local"]) -> None:
         """Select the inference backend."""
         if model not in ("client", "local"):
             raise ValueError("model must be 'client' or 'local'.")
         self._model = f"tabpfn-rel-{model}"
-        self._query: PredictiveQuery | None = None
+        self._fitted: FittedPredictor | None = None
+
+    @property
+    def trials(self) -> list[TrialResult] | None:
+        """Return tuning results, or None when no tuning has completed."""
+        return None if self._fitted is None else self._fitted.trials
+
+    @property
+    def config(self) -> dict[str, Any] | None:
+        """Return the fitted configuration, or None before a successful fit."""
+        return None if self._fitted is None else self._fitted.config
 
     def fit(
         self,
-        query: PredictiveQuery,
+        context: PredictiveContext,
         *,
         n_trials: int = 0,
         seed: int = 0,
         cache_dir: str | Path | None = None,
     ) -> TabPFNRel:
-        """Fit the supplied query in place and return self.
-
-        The query retains fitted state and tuning results. Use a separate query
-        for each model. Positive n_trials enables temporal tuning.
-        """
-        self._query = None
-        query.fit(self._model, n_trials=n_trials, seed=seed, cache_dir=cache_dir)
-        self._query = query
+        """Fit a model on the context and return self."""
+        self._fitted = None
+        self._fitted = context.fit(
+            self._model, n_trials=n_trials, seed=seed, cache_dir=cache_dir
+        )
         return self
 
-    def predict(self, *, cache_dir: str | Path | None = None) -> pd.DataFrame:
-        """Predict the fitted query's configured entities and timestamp."""
-        if self._query is None:
+    def predict(
+        self, query: PredictiveQuery, *, cache_dir: str | Path | None = None
+    ) -> pd.DataFrame:
+        """Predict the query's entities and timestamp using the fitted context."""
+        if self._fitted is None:
             raise RuntimeError("Call fit(...) before predict().")
-        return self._query.predict(cache_dir=cache_dir)
+        return self._fitted.predict(query, cache_dir=cache_dir)

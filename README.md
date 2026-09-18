@@ -88,19 +88,26 @@ target and temporal splits in a task YAML file. The
 describes these formats; the Olist example provides complete files to adapt.
 
 ```python
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, TabPFNRel
+from tabpfn_rel import PredictiveContext, PredictiveQuery, TabPFNRel
 
-spec = PredictiveQuerySpec.from_yaml("task.yaml", data_dir="data/")
-query = PredictiveQuery(spec)
+context = PredictiveContext.from_yaml("task.yaml", data_dir="data/")
 model = TabPFNRel(model="client")
-model.fit(query, n_trials=0)
-predictions = model.predict()
+model.fit(context, n_trials=0)
+query = PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+predictions = model.predict(query)
 ```
 
 Use `model="local"` for local inference. `n_trials=0` (the default) fits the
 default configuration; a positive budget enables temporal tuning. Pass `seed`
 and `cache_dir` to `fit` to control tuning randomness and feature caching.
 `predict` reuses that cache unless given another `cache_dir`.
+
+Both query fields are required. Use `at_timestamp="test_timestamp"` for the
+context cutoff or an explicit date for another prediction anchor. The database
+remains frozen at the context cutoff, including for later anchors, to follow
+RelArena's fixed-snapshot evaluation protocol and prevent post-cutoff data from
+entering predictions. See
+[RelArena's temporal-validation protocol](https://github.com/PriorLabs/relarena/blob/main/docs/temporal-validation.md#why-the-database-cutoff-matters).
 
 To benchmark TabPFN-Rel against other methods, see
 [RelArena](https://github.com/PriorLabs/relarena).
