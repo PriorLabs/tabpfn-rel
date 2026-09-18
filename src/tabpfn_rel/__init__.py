@@ -1,6 +1,6 @@
 """TabPFN models and a predictive interface for relational tables."""
 
-from relarena_core.userdb import PredictiveQuery, PredictiveQuerySpec
+from relarena_core.userdb import PredictiveContext, PredictiveQuery, PredictiveQuerySpec
 
 from tabpfn_rel.estimator import TabPFNRel
 from tabpfn_rel.model import (
@@ -14,6 +14,7 @@ from tabpfn_rel.model import (
 __all__ = [
     "TABPFN_REL_CLIENT_SPACE",
     "TABPFN_REL_LOCAL_SPACE",
+    "PredictiveContext",
     "PredictiveQuery",
     "PredictiveQuerySpec",
     "TabPFNRel",

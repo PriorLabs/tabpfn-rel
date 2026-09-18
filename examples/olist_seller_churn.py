@@ -11,7 +11,12 @@ from pathlib import Path
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, TabPFNRel
+from tabpfn_rel import (
+    PredictiveContext,
+    PredictiveQuery,
+    PredictiveQuerySpec,
+    TabPFNRel,
+)
 
 
 def prepare_olist_data(csv_dir: str) -> Path:
@@ -37,9 +42,11 @@ def fit_predict_and_evaluate(
     n_trials: int,
 ) -> None:
     """Fit the model and score sellers with observed test-window outcomes."""
-    pq = PredictiveQuery(spec)
+    pq = PredictiveContext(spec)
     model.fit(pq, n_trials=n_trials, seed=0)
-    preds = model.predict()
+    preds = model.predict(
+        PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+    )
     labels = pq.compute_test_labels()
     scored = labels.merge(
         preds,
