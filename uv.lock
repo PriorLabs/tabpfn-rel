@@ -9,7 +9,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-15T16:47:02.635991Z"
+exclude-newer = "2026-09-15T17:36:45.001209Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1851,7 +1851,7 @@ wheels = [
 
 [[package]]
 name = "tabpfn-rel"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
