@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from relarena_core.tfm import TFMSpec
 
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, tfm
+from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, TabPFNRel, tfm
 
 from ._data import write_database
 
@@ -67,9 +67,17 @@ def query(
 def test_rpi_fits_tunes_and_reuses_prediction_cache(
     query: PredictiveQuery, backend: str, n_trials: int, tmp_path: Path
 ) -> None:
-    query.fit(f"tabpfn-rel-{backend}", n_trials=n_trials, cache_dir=tmp_path / "cache")
-    predictions = query.predict()
+    model = TabPFNRel(model=backend)
+    assert (
+        model.fit(query, n_trials=n_trials, seed=7, cache_dir=tmp_path / "cache")
+        is model
+    )
+    predictions = model.predict()
     pd.testing.assert_frame_equal(predictions, query.predict())
+    pd.testing.assert_frame_equal(
+        predictions, model.predict(cache_dir=tmp_path / "prediction-cache")
+    )
+    assert list((tmp_path / "prediction-cache").rglob("*.parquet"))
     assert sorted(predictions["customer_id"]) == ["a", "b", "c", "d"]
     assert predictions["y_pred"].notna().all()
     assert len(query.compute_test_labels()) == 4
@@ -82,3 +90,20 @@ def test_rpi_fits_tunes_and_reuses_prediction_cache(
     if backend == "client":
         assert "description__raw_text" in query._model._fitted.estimator.columns_
     assert list((tmp_path / "cache").rglob("*.parquet"))
+
+
+def test_wrapper_default_fit_and_failed_refit(
+    query: PredictiveQuery, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = TabPFNRel(model="local").fit(query)
+    assert query.trials is None
+    assert len(model.predict()) == 4
+
+    def fail_fit(*args: object, **kwargs: object) -> None:
+        raise ValueError("Fit failed")
+
+    monkeypatch.setattr(query, "fit", fail_fit)
+    with pytest.raises(ValueError, match="Fit failed"):
+        model.fit(query)
+    with pytest.raises(RuntimeError, match="Call fit"):
+        model.predict()
