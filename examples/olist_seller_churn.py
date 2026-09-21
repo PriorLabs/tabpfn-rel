@@ -11,7 +11,12 @@ from pathlib import Path
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, TabPFNRel
+from tabpfn_rel import (
+    PredictiveContext,
+    PredictiveQuery,
+    PredictiveQuerySpec,
+    TabPFNRel,
+)
 
 
 def prepare_olist_data(csv_dir: str) -> Path:
@@ -37,16 +42,27 @@ def fit_predict_and_evaluate(
     n_trials: int,
 ) -> None:
     """Fit the model and score sellers with observed test-window outcomes."""
-    pq = PredictiveQuery(spec)
+    pq = PredictiveContext(spec)
     model.fit(pq, n_trials=n_trials, seed=0)
-    preds = model.predict()
     labels = pq.compute_test_labels()
+    # For multiple test timestamps, see:
+    # https://github.com/PriorLabs/relarena/blob/adrian/context-query/examples/relbench_test_rows.py
+    preds = model.predict(
+        PredictiveQuery(
+            entities=labels[pq.task.entity_col].tolist(),
+            at_timestamp="test_timestamp",
+        )
+    )
     scored = labels.merge(
         preds,
         on=[pq.task.time_col, pq.task.entity_col],
-        how="left",
+        how="outer",
         validate="one_to_one",
+        indicator=True,
     )
+    if not scored["_merge"].eq("both").all():
+        raise ValueError("Prediction rows must exactly match test label rows.")
+    scored = scored.drop(columns="_merge")
     if scored[f"{pq.task.target_col}_pred"].isna().any():
         raise RuntimeError("Predictions are missing rows from the test cohort.")
     roc_auc = roc_auc_score(

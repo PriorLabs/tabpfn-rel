@@ -7,9 +7,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from relarena_core.featurization import dfs
 from relarena_core.tfm import TFMSpec
 
-from tabpfn_rel import PredictiveQuery, PredictiveQuerySpec, TabPFNRel, tfm
+from tabpfn_rel import (
+    PredictiveContext,
+    PredictiveQuery,
+    PredictiveQuerySpec,
+    TabPFNRel,
+    tfm,
+)
 
 from ._data import write_database
 
@@ -39,7 +46,7 @@ def query(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
-) -> PredictiveQuery:
+) -> PredictiveContext:
     for variable in (
         "RELARENA_CACHE_DIR",
         "RELARENA_DISABLE_CACHE",
@@ -56,7 +63,7 @@ def query(
         tmp_path, getattr(request, "param", "binary_classification")
     )
     spec = PredictiveQuerySpec.from_yaml(str(task_path), data_dir=str(tmp_path))
-    return PredictiveQuery(spec, data_version="test-v1")
+    return PredictiveContext(spec, data_version="test-v1")
 
 
 @pytest.mark.parametrize(
@@ -65,41 +72,61 @@ def query(
 @pytest.mark.parametrize("backend", ["local", "client-2026-08-15", "client-2026-09-18"])
 @pytest.mark.parametrize("n_trials", [0, 2])
 def test_rpi_fits_tunes_and_reuses_prediction_cache(
-    query: PredictiveQuery, backend: str, n_trials: int, tmp_path: Path
+    query: PredictiveContext, backend: str, n_trials: int, tmp_path: Path
 ) -> None:
     model = TabPFNRel(model=backend)
     assert (
         model.fit(query, n_trials=n_trials, seed=7, cache_dir=tmp_path / "cache")
         is model
     )
-    predictions = model.predict()
-    pd.testing.assert_frame_equal(predictions, query.predict())
+    predictions = model.predict(
+        PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+    )
     pd.testing.assert_frame_equal(
-        predictions, model.predict(cache_dir=tmp_path / "prediction-cache")
+        predictions,
+        model._fitted.predict(
+            PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+        ),
+    )
+    pd.testing.assert_frame_equal(
+        predictions,
+        model.predict(
+            PredictiveQuery(entities="all", at_timestamp="test_timestamp"),
+            cache_dir=tmp_path / "prediction-cache",
+        ),
     )
     assert list((tmp_path / "prediction-cache").rglob("*.parquet"))
     assert sorted(predictions["customer_id"]) == ["a", "b", "c", "d"]
     assert predictions["y_pred"].notna().all()
     assert len(query.compute_test_labels()) == 4
-    assert query.config["max_depth"] in (
+    assert model.config["max_depth"] in (
         (4,) if backend == "client-2026-09-18" else (2, 3)
     )
     if n_trials:
-        assert len(query.trials) == (1 if backend == "client-2026-09-18" else 2)
-        assert all(trial.val_score is not None for trial in query.trials)
+        assert len(model.trials) == (1 if backend == "client-2026-09-18" else 2)
+        assert all(trial.val_score is not None for trial in model.trials)
     else:
-        assert query.trials is None
+        assert model.trials is None
     if backend.startswith("client"):
-        assert "description__raw_text" in query._model._fitted.estimator.columns_
+        assert (
+            "description__raw_text" in model._fitted._model._fitted.estimator.columns_
+        )
     assert list((tmp_path / "cache").rglob("*.parquet"))
 
 
 def test_wrapper_default_fit_and_failed_refit(
-    query: PredictiveQuery, monkeypatch: pytest.MonkeyPatch
+    query: PredictiveContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     model = TabPFNRel(model="local").fit(query)
-    assert query.trials is None
-    assert len(model.predict()) == 4
+    assert model.trials is None
+    assert (
+        len(
+            model.predict(
+                PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+            )
+        )
+        == 4
+    )
 
     def fail_fit(*args: object, **kwargs: object) -> None:
         raise ValueError("Fit failed")
@@ -108,4 +135,53 @@ def test_wrapper_default_fit_and_failed_refit(
     with pytest.raises(ValueError, match="Fit failed"):
         model.fit(query)
     with pytest.raises(RuntimeError, match="Call fit"):
-        model.predict()
+        model.predict(PredictiveQuery(entities="all", at_timestamp="test_timestamp"))
+
+
+def test_context_cache_reused_across_queries_and_fits(
+    query: PredictiveContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_dir = tmp_path / "shared-cache"
+    query.precompute_cache(cache_dir)
+    training_files = {
+        path: (path.stat().st_mtime_ns, path.read_bytes())
+        for path in cache_dir.rglob("*.parquet")
+    }
+    assert training_files
+    build_rdb = dfs._build_rdb
+
+    def forbid_build(*args: object, **kwargs: object) -> None:
+        pytest.fail("Cache hit rebuilt DFS features")
+
+    monkeypatch.setattr(dfs, "_CACHE", dfs._DepthCache())
+    monkeypatch.setattr(dfs, "_build_rdb", forbid_build)
+    fitted = query.fit("tabpfn-rel-local", n_trials=2, cache_dir=cache_dir)
+    first_model = fitted._model
+    monkeypatch.setattr(dfs, "_build_rdb", build_rdb)
+    first = PredictiveQuery(entities="all", at_timestamp="test_timestamp")
+    second = PredictiveQuery(entities=["b"], at_timestamp="2004-11-15")
+    first_predictions = fitted.predict(first)
+    second_predictions = fitted.predict(second)
+    assert second_predictions.customer_id.tolist() == ["b"]
+    assert second_predictions.date.tolist() == [pd.Timestamp("2004-11-15")]
+    assert fitted._model is first_model
+    assert all(
+        (path.stat().st_mtime_ns, path.read_bytes()) == original
+        for path, original in training_files.items()
+    )
+    all_files = {path: path.stat().st_mtime_ns for path in cache_dir.rglob("*.parquet")}
+    monkeypatch.setattr(dfs, "_CACHE", dfs._DepthCache())
+    monkeypatch.setattr(dfs, "_build_rdb", forbid_build)
+    pd.testing.assert_frame_equal(first_predictions, fitted.predict(first))
+    pd.testing.assert_frame_equal(second_predictions, fitted.predict(second))
+    explicit = PredictiveQuery(entities="all", at_timestamp="2004-12-01")
+    pd.testing.assert_frame_equal(first_predictions, fitted.predict(explicit))
+    fresh = PredictiveContext.from_yaml(
+        tmp_path / "task.yaml", data_dir=tmp_path, data_version="test-v1"
+    )
+    other = fresh.fit("tabpfn-rel-client-2026-08-15", n_trials=0, cache_dir=cache_dir)
+    assert other._model is not first_model
+    pd.testing.assert_frame_equal(first_predictions, fitted.predict(first))
+    assert {
+        path: path.stat().st_mtime_ns for path in cache_dir.rglob("*.parquet")
+    } == all_files
