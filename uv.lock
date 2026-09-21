@@ -9,7 +9,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-09-15T17:36:45.001209Z"
+exclude-newer = "2026-09-18T09:06:06.742441Z"
 exclude-newer-span = "P3D"
 
 [options.exclude-newer-package]
@@ -1418,10 +1418,11 @@ wheels = [
 
 [[package]]
 name = "relarena-core"
-version = "0.0.2"
+version = "0.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "configspace" },
+    { name = "datasets" },
     { name = "duckdb" },
     { name = "jsonschema" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -1431,9 +1432,9 @@ dependencies = [
     { name = "relbench" },
     { name = "scikit-learn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/64/74aadf683c868d34e5d6f6e86a74eb4ffa64bd998019bfc3e16220ecc2a4/relarena_core-0.0.2.tar.gz", hash = "sha256:974f5ed33e0161b8a6615a7d2877186b57cb5c2a66ce2c49700cd5d5ab0b12af", size = 51635, upload-time = "2026-09-18T16:42:42.526Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/8f/aeb1ceccfb710d8846a0d950f641e5c1223c7608cafe6110444d78e77e57/relarena_core-0.0.3.tar.gz", hash = "sha256:b557065f4e30d2e2a605a20a432f76983ab9edf2784951b688c0c61d13ea47ea", size = 51640, upload-time = "2026-09-21T09:05:45.537Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/12/566484e918b5956d35e17df824b378ea288cd6ecf5775d4195f945cd7b43/relarena_core-0.0.2-py3-none-any.whl", hash = "sha256:c287495551c8452c21b9b1082e100d505352e6efce3b6a9934a90d68a529819b", size = 68068, upload-time = "2026-09-18T16:42:41.526Z" },
+    { url = "https://files.pythonhosted.org/packages/61/df/2c52c49c78900715bd3749c0dc4daec3a0156c6788f7a4e5c60577f3af79/relarena_core-0.0.3-py3-none-any.whl", hash = "sha256:65c2f96167ec6517c4d3a2ca2488bcdbb633341b6f256299b1ed148a30be4894", size = 68076, upload-time = "2026-09-21T09:05:44.352Z" },
 ]
 
 [package.optional-dependencies]
@@ -1851,7 +1852,7 @@ wheels = [
 
 [[package]]
 name = "tabpfn-rel"
-version = "0.0.2"
+version = "0.0.3"
 source = { editable = "." }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -1887,9 +1888,9 @@ dev = [
 requires-dist = [
     { name = "numpy", specifier = ">=1.24" },
     { name = "pandas", specifier = ">=2.3.3,<3.0" },
-    { name = "relarena-core", specifier = ">=0.0.2,<0.1" },
-    { name = "relarena-core", extras = ["dfs"], marker = "extra == 'api'", specifier = ">=0.0.2,<0.1" },
-    { name = "relarena-core", extras = ["dfs"], marker = "extra == 'local'", specifier = ">=0.0.2,<0.1" },
+    { name = "relarena-core", specifier = ">=0.0.3,<0.1" },
+    { name = "relarena-core", extras = ["dfs"], marker = "extra == 'api'", specifier = ">=0.0.3,<0.1" },
+    { name = "relarena-core", extras = ["dfs"], marker = "extra == 'local'", specifier = ">=0.0.3,<0.1" },
     { name = "relbench", specifier = "==2.1.2" },
     { name = "tabpfn", marker = "extra == 'local'", specifier = ">=8" },
     { name = "tabpfn-client", marker = "extra == 'api'", specifier = ">=0.3.2" },
@@ -1901,7 +1902,7 @@ cpu = [{ name = "torch", index = "https://download.pytorch.org/whl/cpu", conflic
 dev = [
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pytest", specifier = ">=9.1.1" },
-    { name = "relarena-core", extras = ["dfs"], specifier = ">=0.0.2,<0.1" },
+    { name = "relarena-core", extras = ["dfs"], specifier = ">=0.0.3,<0.1" },
     { name = "ruff", specifier = "==0.15.13" },
 ]
 
