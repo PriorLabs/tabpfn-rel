@@ -1893,7 +1893,7 @@ requires-dist = [
     { name = "relarena-core", extras = ["dfs"], marker = "extra == 'local'", specifier = ">=0.0.3,<0.1" },
     { name = "relbench", specifier = "==2.1.2" },
     { name = "tabpfn", marker = "extra == 'local'", specifier = ">=8" },
-    { name = "tabpfn-client", marker = "extra == 'api'", specifier = ">=0.3.2" },
+    { name = "tabpfn-client", marker = "extra == 'api'", specifier = ">=0.5.3" },
 ]
 provides-extras = ["local", "api"]
 
