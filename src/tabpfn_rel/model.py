@@ -23,10 +23,12 @@ DFS matrix is content-cached, so the downsample / pool selection happens cheaply
 afterward (rather than being fused into a pre-DFS slice); text is handled inside
 the estimator at fit time.
 
-Two variants are registered, sharing the config validated in the reference sweeps —
+The local and 2026-08-15 API variants share the configuration —
 TabPFN v3 with hard-pool recency contexts (`K=100k`, `M=4·K`), tuned over DFS depth
-only: `tabpfn-rel-local` runs the local TabPFN v3, and `tabpfn-rel-client` runs
+only: `tabpfn-rel-local` runs the local TabPFN v3, and
+`tabpfn-rel-client-2026-08-15` runs
 through the hosted TabPFN API with anchor-table text passed through raw.
+The 2026-09-18 API variant uses TabPFN 3.5, fixed DFS depth 4, and K=200k.
 """
 
 from __future__ import annotations
@@ -34,12 +36,13 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from relarena_core.featurization import DFS_MAX_DEPTH, build_dfs_features
 from relarena_core.model import RelArenaModel
 from relarena_core.registry import register_model
 from relarena_core.search_space import SearchSpace
-from relarena_core.tfm import predict_tfm
-from relbench.base import Database, EntityTask, Table
+from relarena_core.tfm import FittedTFM, predict_tfm
+from relbench.base import Database, EntityTask, Table, TaskType
 
 from tabpfn_rel.context import ContextStrategy
 from tabpfn_rel.features import FeaturePipeline
@@ -118,13 +121,27 @@ class TabPFNRelModel(RelArenaModel):
             raise ValueError(f"DFS produced no features at depth {self._depth}.")
         df = self._features.fit_transform(df, task, train_table, db)
         cutoff = train_table.df[task.time_col].to_numpy() if task.time_col else None
-        self._fitted = context.fit(
+        self._fitted = self._fit_backend(
             df,
             train_table.df[task.target_col],
             task.task_type,
-            tfm=self._tfm,
+            context,
             seed=seed,
             context_time=cutoff,
+        )
+
+    def _fit_backend(
+        self,
+        df: pd.DataFrame,
+        y: pd.Series,
+        task_type: TaskType,
+        context: ContextStrategy,
+        *,
+        seed: int,
+        context_time: np.ndarray | None,
+    ) -> FittedTFM:
+        return context.fit(
+            df, y, task_type, tfm=self._tfm, seed=seed, context_time=context_time
         )
 
     def predict(self, task: EntityTask, db: Database, table: Table) -> np.ndarray:
@@ -187,4 +204,88 @@ class TabPFNRelLocalModel(TabPFNRelModel):
 class TabPFNRelClientModel(TabPFNRelModel):
     """`tabpfn-rel` through the hosted TabPFN API, with raw anchor-table text."""
 
-    name = "tabpfn-rel-client"
+    name = "tabpfn-rel-client-2026-08-15"
+
+
+TABPFN_REL_CLIENT_20260918_SPACE = SearchSpace(
+    default_overrides={
+        "tfm": "tabpfn-v3.5-api",
+        "context_strategy": "hard_pool",
+        "subsample_samples": 200_000,
+        "pool_inflation": 4.0,
+        "with_text": True,
+        "max_depth": 4,
+    },
+)
+
+
+@register_model(search_space=TABPFN_REL_CLIENT_20260918_SPACE)
+class TabPFNRelClient20260918Model(TabPFNRelModel):
+    """Hosted TabPFN 3.5 with depth-four DFS and 200k recency contexts."""
+
+    name = "tabpfn-rel-client-2026-09-18"
+
+
+class TabPFNRelV35Model(TabPFNRelModel):
+    """Shared fitting behavior for TabPFN 3.5 recipes."""
+
+    def _fit_backend(
+        self,
+        df: pd.DataFrame,
+        y: pd.Series,
+        task_type: TaskType,
+        context: ContextStrategy,
+        *,
+        seed: int,
+        context_time: np.ndarray | None,
+    ) -> FittedTFM:
+        if task_type != TaskType.REGRESSION:
+            return super()._fit_backend(
+                df, y, task_type, context, seed=seed, context_time=context_time
+            )
+        # Keep the optional inference dependencies out of model discovery.
+        from tabpfn_rel.hurdle import fit_auto_hurdle
+
+        return fit_auto_hurdle(
+            df,
+            y,
+            context,
+            tfm=self._tfm,
+            seed=seed,
+            context_time=context_time,
+            zero_threshold=float(self.config["hurdle_zero_threshold"]),
+        )
+
+
+_RELEASE_KNOBS = {
+    "context_strategy": "hard_pool",
+    "subsample_samples": 200_000,
+    "pool_inflation": 4.0,
+    "n_estimators": 8,
+    "with_text": True,
+    "max_depth": 4,
+    "hurdle": "auto",
+    "hurdle_zero_threshold": 0.05,
+}
+
+
+@register_model(
+    search_space=SearchSpace(
+        default_overrides={**_RELEASE_KNOBS, "tfm": "tabpfn-v3.5-api-simple"}
+    )
+)
+class TabPFNRelClient20260928Model(TabPFNRelV35Model):
+    """Hosted TabPFN 3.5 with simple text."""
+
+    name = "tabpfn-rel-client-2026-09-28"
+
+
+@register_model(
+    search_space=SearchSpace(
+        default_overrides={**_RELEASE_KNOBS, "tfm": "tabpfn-v3.5-tfidf"}
+    )
+)
+class TabPFNRelLocal20260928Model(TabPFNRelV35Model):
+    """Local TabPFN 3.5 with native TF-IDF."""
+
+    name = "tabpfn-rel-local-2026-09-28"

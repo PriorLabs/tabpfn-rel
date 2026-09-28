@@ -13,11 +13,40 @@ from relarena_core.userdb import FittedPredictor, PredictiveContext, PredictiveQ
 class TabPFNRel:
     """Fit a relational context with local or hosted TabPFN inference."""
 
-    def __init__(self, *, model: Literal["client", "local"]) -> None:
+    def __init__(
+        self,
+        *,
+        model: Literal[
+            "client",
+            "local",
+            "local-2026-08-15",
+            "client-2026-08-15",
+            "client-2026-09-18",
+            "client-2026-09-28",
+            "local-2026-09-28",
+        ],
+    ) -> None:
         """Select the inference backend."""
-        if model not in ("client", "local"):
-            raise ValueError("model must be 'client' or 'local'.")
-        self._model = f"tabpfn-rel-{model}"
+        if model not in (
+            "client",
+            "local",
+            "local-2026-08-15",
+            "client-2026-08-15",
+            "client-2026-09-18",
+            "client-2026-09-28",
+            "local-2026-09-28",
+        ):
+            raise ValueError(
+                "model must be 'client', 'local', 'local-2026-08-15', "
+                "'client-2026-08-15', "
+                "'client-2026-09-18', 'client-2026-09-28', "
+                "or 'local-2026-09-28'."
+            )
+        self._model = {
+            "client": "tabpfn-rel-client-2026-09-28",
+            "local": "tabpfn-rel-local-2026-09-28",
+            "local-2026-08-15": "tabpfn-rel-local",
+        }.get(model, f"tabpfn-rel-{model}")
         self._fitted: FittedPredictor | None = None
 
     @property

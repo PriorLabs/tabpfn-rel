@@ -32,7 +32,13 @@ def _make_tabpfn(
         "v2": ModelVersion.V2,
         "v2.5": ModelVersion.V2_5,
         "v3": ModelVersion.V3,
+        "v3.5": ModelVersion.V3_5,
     }[version]
+    if version == "v3.5":
+        overrides["inference_config"] = {
+            **overrides.get("inference_config", {}),
+            "TRANSFORM_TEXT": True,
+        }
     estimator_cls = TabPFNRegressor if regression else TabPFNClassifier
     return estimator_cls.create_default_for_version(
         model_version,
@@ -70,12 +76,13 @@ def _sanitize_api_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
 
 def _make_tabpfn_api(
     *,
+    model_path: str,
     regression: bool,
     device: Any,
     seed: int,
     **overrides: Any,
 ) -> Any:
-    """Build a TabPFN API-client estimator pinned to the v3 model.
+    """Build a TabPFN API-client estimator for an explicit model selector.
 
     The api extra supplies tabpfn_client; it is imported when constructed.
     Fit and predict
@@ -89,7 +96,7 @@ def _make_tabpfn_api(
     overrides = _sanitize_api_overrides(overrides)
     estimator_cls = ApiRegressor if regression else ApiClassifier
     return estimator_cls(
-        model_path="v3_default",
+        model_path=model_path,
         random_state=seed,
         ignore_pretraining_limits=True,
         **overrides,
@@ -107,9 +114,43 @@ TFM_REGISTRY: dict[str, TFMSpec] = {
         max_train_samples=100_000,
     ),
     "tabpfn-v3-api": TFMSpec(
-        make_classifier=lambda **kw: _make_tabpfn_api(regression=False, **kw),
-        make_regressor=lambda **kw: _make_tabpfn_api(regression=True, **kw),
+        make_classifier=lambda **kw: _make_tabpfn_api(
+            model_path="v3_default", regression=False, **kw
+        ),
+        make_regressor=lambda **kw: _make_tabpfn_api(
+            model_path="v3_default", regression=True, **kw
+        ),
         max_train_samples=100_000,
+        supports_text=True,
+    ),
+    "tabpfn-v3.5-api": TFMSpec(
+        make_classifier=lambda **kw: _make_tabpfn_api(
+            model_path="v3.5_default", regression=False, **kw
+        ),
+        make_regressor=lambda **kw: _make_tabpfn_api(
+            model_path="v3.5_default", regression=True, **kw
+        ),
+        max_train_samples=200_000,
+        supports_text=True,
+    ),
+    "tabpfn-v3.5-tfidf": TFMSpec(
+        make_classifier=lambda **kw: _make_tabpfn(
+            "v3.5", regression=False, n_preprocessing_jobs=-1, **kw
+        ),
+        make_regressor=lambda **kw: _make_tabpfn(
+            "v3.5", regression=True, n_preprocessing_jobs=-1, **kw
+        ),
+        max_train_samples=200_000,
+        supports_text=True,
+    ),
+    "tabpfn-v3.5-api-simple": TFMSpec(
+        make_classifier=lambda **kw: _make_tabpfn_api(
+            model_path="v3.5_default", text_handling="simple", regression=False, **kw
+        ),
+        make_regressor=lambda **kw: _make_tabpfn_api(
+            model_path="v3.5_default", text_handling="simple", regression=True, **kw
+        ),
+        max_train_samples=200_000,
         supports_text=True,
     ),
 }

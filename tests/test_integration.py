@@ -53,7 +53,13 @@ def query(
         "RELARENA_DISABLE_FEATURE_CACHE",
     ):
         monkeypatch.delenv(variable, raising=False)
-    for name in ("tabpfn-v3", "tabpfn-v3-api"):
+    for name in (
+        "tabpfn-v3",
+        "tabpfn-v3-api",
+        "tabpfn-v3.5-api",
+        "tabpfn-v3.5-tfidf",
+        "tabpfn-v3.5-api-simple",
+    ):
         monkeypatch.setitem(
             tfm.TFM_REGISTRY,
             name,
@@ -69,7 +75,9 @@ def query(
 @pytest.mark.parametrize(
     "query", ["binary_classification", "regression"], indirect=True
 )
-@pytest.mark.parametrize("backend", ["local", "client"])
+@pytest.mark.parametrize(
+    "backend", ["local-2026-08-15", "client-2026-08-15", "client-2026-09-18"]
+)
 @pytest.mark.parametrize("n_trials", [0, 2])
 def test_rpi_fits_tunes_and_reuses_prediction_cache(
     query: PredictiveContext, backend: str, n_trials: int, tmp_path: Path
@@ -99,23 +107,27 @@ def test_rpi_fits_tunes_and_reuses_prediction_cache(
     assert sorted(predictions["customer_id"]) == ["a", "b", "c", "d"]
     assert predictions["y_pred"].notna().all()
     assert len(query.compute_test_labels()) == 4
-    assert model.config["max_depth"] in (2, 3)
-    if n_trials:
+    assert model.config["max_depth"] in (
+        (4,) if backend == "client-2026-09-18" else (2, 3)
+    )
+    if n_trials and backend != "client-2026-09-18":
         assert len(model.trials) == 2
         assert all(trial.val_score is not None for trial in model.trials)
     else:
         assert model.trials is None
-    if backend == "client":
+    if backend.startswith("client"):
         assert (
             "description__raw_text" in model._fitted._model._fitted.estimator.columns_
         )
     assert list((tmp_path / "cache").rglob("*.parquet"))
 
 
+@pytest.mark.parametrize("backend", ["local", "client"])
 def test_wrapper_default_fit_and_failed_refit(
-    query: PredictiveContext, monkeypatch: pytest.MonkeyPatch
+    query: PredictiveContext, monkeypatch: pytest.MonkeyPatch, backend: str
 ) -> None:
-    model = TabPFNRel(model="local").fit(query)
+    model = TabPFNRel(model=backend).fit(query)
+    assert model.config["max_depth"] == 4
     assert model.trials is None
     assert (
         len(
@@ -177,7 +189,7 @@ def test_context_cache_reused_across_queries_and_fits(
     fresh = PredictiveContext.from_yaml(
         tmp_path / "task.yaml", data_dir=tmp_path, data_version="test-v1"
     )
-    other = fresh.fit("tabpfn-rel-client", n_trials=0, cache_dir=cache_dir)
+    other = fresh.fit("tabpfn-rel-client-2026-08-15", n_trials=0, cache_dir=cache_dir)
     assert other._model is not first_model
     pd.testing.assert_frame_equal(first_predictions, fitted.predict(first))
     assert {
