@@ -84,7 +84,7 @@ def test_sparse_training_columns_predict_with_local_tabpfn(
         ),
     )
     context = PredictiveContext(spec)
-    fitted = context.fit("tabpfn-rel-local", n_trials=0)
+    fitted = context.fit("tabpfn-rel-local-2026-08-15", n_trials=0)
     predictions = fitted.predict(
         PredictiveQuery(entities=[20, 21], at_timestamp="test_timestamp")
     )
@@ -96,7 +96,7 @@ def test_sparse_training_columns_predict_with_local_tabpfn(
 def test_tiny_database_predicts_with_local_tabpfn(tmp_path: Path) -> None:
     task = write_database(tmp_path)
     context = PredictiveContext.from_yaml(task, data_dir=tmp_path)
-    fitted = context.fit("tabpfn-rel-local", n_trials=0)
+    fitted = context.fit("tabpfn-rel-local-2026-08-15", n_trials=0)
     predictions = fitted.predict(
         PredictiveQuery(entities="all", at_timestamp="test_timestamp")
     )

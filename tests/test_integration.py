@@ -165,7 +165,7 @@ def test_context_cache_reused_across_queries_and_fits(
 
     monkeypatch.setattr(dfs, "_CACHE", dfs._DepthCache())
     monkeypatch.setattr(dfs, "_build_rdb", forbid_build)
-    fitted = query.fit("tabpfn-rel-local", n_trials=2, cache_dir=cache_dir)
+    fitted = query.fit("tabpfn-rel-local-2026-08-15", n_trials=2, cache_dir=cache_dir)
     first_model = fitted._model
     monkeypatch.setattr(dfs, "_build_rdb", build_rdb)
     first = PredictiveQuery(entities="all", at_timestamp="test_timestamp")
