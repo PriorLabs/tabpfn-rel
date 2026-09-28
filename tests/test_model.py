@@ -377,3 +377,27 @@ def test_dated_client_has_one_fixed_depth_four_configuration() -> None:
     ]
     assert TabPFNRelClient20260918Model.fit is TabPFNRelModel.fit
     assert TabPFNRelClient20260918Model.predict is TabPFNRelModel.predict
+
+
+@pytest.mark.parametrize(
+    "name,backend",
+    [
+        ("tabpfn-rel-client-2026-09-28", "tabpfn-v3.5-api-simple"),
+        ("tabpfn-rel-local-2026-09-28", "tabpfn-v3.5-tfidf"),
+    ],
+)
+def test_release_recipes_have_one_default(name: str, backend: str) -> None:
+    space = registry.search_space(name)
+    assert space.configs(n_trials=10, seed=0) == [
+        {
+            "tfm": backend,
+            "context_strategy": "hard_pool",
+            "max_depth": 4,
+            "subsample_samples": 200_000,
+            "pool_inflation": 4.0,
+            "n_estimators": 8,
+            "with_text": True,
+            "hurdle": "auto",
+            "hurdle_zero_threshold": 0.05,
+        }
+    ]

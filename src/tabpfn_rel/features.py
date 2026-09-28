@@ -259,6 +259,7 @@ class FeaturePipeline:
         self.n_lags = (
             int(config.get("n_lags", 5)) if config.get("with_history_features") else 0
         )
+        self._string_text = config.get("tfm") == "tabpfn-v3.5-tfidf"
         self.text = RawTextFeaturizer() if config.get("with_text") else None
         self._history_pool: pd.DataFrame | None = None
 
@@ -282,7 +283,11 @@ class FeaturePipeline:
             )
             df = self._attach_lags(df, train_table.df, task)
         if self.text is not None:
-            df = attach_text(df, self.text.fit(db, task, train_table))
+            raw = self.text.fit(db, task, train_table)
+            df = attach_text(
+                df,
+                raw.astype("string") if self._string_text and raw is not None else raw,
+            )
         return df
 
     def transform(
@@ -294,7 +299,11 @@ class FeaturePipeline:
         if self.n_lags > 0:
             df = self._attach_lags(df, table.df, task)
         if self.text is not None:
-            df = attach_text(df, self.text.transform(db, task, table))
+            raw = self.text.transform(db, task, table)
+            df = attach_text(
+                df,
+                raw.astype("string") if self._string_text and raw is not None else raw,
+            )
         return df
 
     def _attach_lags(

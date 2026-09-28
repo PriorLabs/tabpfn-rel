@@ -102,6 +102,18 @@ default configuration; a positive budget enables temporal tuning. Pass `seed`
 and `cache_dir` to `fit` to control tuning randomness and feature caching.
 `predict` reuses that cache unless given another `cache_dir`.
 
+`model="client"` uses TabPFN 3.5 with simple text processing; `model="local"`
+uses TabPFN 3.5 with native TF-IDF. Their explicit recipe selectors are:
+
+| Backend | Selector |
+| --- | --- |
+| Hosted API, simple text | `client-2026-09-28` |
+| Local, native TF-IDF text | `local-2026-09-28` |
+
+Prefix the selector with `tabpfn-rel-` to use it
+as a RelArena model ID. To use the previous defaults, explicitly select
+`model="client-2026-08-15"` or `model="local-2026-08-15"`.
+
 Both query fields are required. Use `at_timestamp="test_timestamp"` for the
 context cutoff or an explicit date for another prediction anchor. The database
 remains frozen at the context cutoff, including for later anchors, to follow

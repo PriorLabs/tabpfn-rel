@@ -36,12 +36,13 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from relarena_core.featurization import DFS_MAX_DEPTH, build_dfs_features
 from relarena_core.model import RelArenaModel
 from relarena_core.registry import register_model
 from relarena_core.search_space import SearchSpace
-from relarena_core.tfm import predict_tfm
-from relbench.base import Database, EntityTask, Table
+from relarena_core.tfm import FittedTFM, predict_tfm
+from relbench.base import Database, EntityTask, Table, TaskType
 
 from tabpfn_rel.context import ContextStrategy
 from tabpfn_rel.features import FeaturePipeline
@@ -120,13 +121,27 @@ class TabPFNRelModel(RelArenaModel):
             raise ValueError(f"DFS produced no features at depth {self._depth}.")
         df = self._features.fit_transform(df, task, train_table, db)
         cutoff = train_table.df[task.time_col].to_numpy() if task.time_col else None
-        self._fitted = context.fit(
+        self._fitted = self._fit_backend(
             df,
             train_table.df[task.target_col],
             task.task_type,
-            tfm=self._tfm,
+            context,
             seed=seed,
             context_time=cutoff,
+        )
+
+    def _fit_backend(
+        self,
+        df: pd.DataFrame,
+        y: pd.Series,
+        task_type: TaskType,
+        context: ContextStrategy,
+        *,
+        seed: int,
+        context_time: np.ndarray | None,
+    ) -> FittedTFM:
+        return context.fit(
+            df, y, task_type, tfm=self._tfm, seed=seed, context_time=context_time
         )
 
     def predict(self, task: EntityTask, db: Database, table: Table) -> np.ndarray:
@@ -209,3 +224,68 @@ class TabPFNRelClient20260918Model(TabPFNRelModel):
     """Hosted TabPFN 3.5 with depth-four DFS and 200k recency contexts."""
 
     name = "tabpfn-rel-client-2026-09-18"
+
+
+class TabPFNRelV35Model(TabPFNRelModel):
+    """Shared fitting behavior for TabPFN 3.5 recipes."""
+
+    def _fit_backend(
+        self,
+        df: pd.DataFrame,
+        y: pd.Series,
+        task_type: TaskType,
+        context: ContextStrategy,
+        *,
+        seed: int,
+        context_time: np.ndarray | None,
+    ) -> FittedTFM:
+        if task_type != TaskType.REGRESSION:
+            return super()._fit_backend(
+                df, y, task_type, context, seed=seed, context_time=context_time
+            )
+        # Keep the optional inference dependencies out of model discovery.
+        from tabpfn_rel.hurdle import fit_auto_hurdle
+
+        return fit_auto_hurdle(
+            df,
+            y,
+            context,
+            tfm=self._tfm,
+            seed=seed,
+            context_time=context_time,
+            zero_threshold=float(self.config["hurdle_zero_threshold"]),
+        )
+
+
+_RELEASE_KNOBS = {
+    "context_strategy": "hard_pool",
+    "subsample_samples": 200_000,
+    "pool_inflation": 4.0,
+    "n_estimators": 8,
+    "with_text": True,
+    "max_depth": 4,
+    "hurdle": "auto",
+    "hurdle_zero_threshold": 0.05,
+}
+
+
+@register_model(
+    search_space=SearchSpace(
+        default_overrides={**_RELEASE_KNOBS, "tfm": "tabpfn-v3.5-api-simple"}
+    )
+)
+class TabPFNRelClient20260928Model(TabPFNRelV35Model):
+    """Hosted TabPFN 3.5 with simple text."""
+
+    name = "tabpfn-rel-client-2026-09-28"
+
+
+@register_model(
+    search_space=SearchSpace(
+        default_overrides={**_RELEASE_KNOBS, "tfm": "tabpfn-v3.5-tfidf"}
+    )
+)
+class TabPFNRelLocal20260928Model(TabPFNRelV35Model):
+    """Local TabPFN 3.5 with native TF-IDF."""
+
+    name = "tabpfn-rel-local-2026-09-28"

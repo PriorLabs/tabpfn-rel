@@ -53,7 +53,13 @@ def query(
         "RELARENA_DISABLE_FEATURE_CACHE",
     ):
         monkeypatch.delenv(variable, raising=False)
-    for name in ("tabpfn-v3", "tabpfn-v3-api", "tabpfn-v3.5-api"):
+    for name in (
+        "tabpfn-v3",
+        "tabpfn-v3-api",
+        "tabpfn-v3.5-api",
+        "tabpfn-v3.5-tfidf",
+        "tabpfn-v3.5-api-simple",
+    ):
         monkeypatch.setitem(
             tfm.TFM_REGISTRY,
             name,
@@ -69,7 +75,9 @@ def query(
 @pytest.mark.parametrize(
     "query", ["binary_classification", "regression"], indirect=True
 )
-@pytest.mark.parametrize("backend", ["local", "client-2026-08-15", "client-2026-09-18"])
+@pytest.mark.parametrize(
+    "backend", ["local-2026-08-15", "client-2026-08-15", "client-2026-09-18"]
+)
 @pytest.mark.parametrize("n_trials", [0, 2])
 def test_rpi_fits_tunes_and_reuses_prediction_cache(
     query: PredictiveContext, backend: str, n_trials: int, tmp_path: Path
@@ -102,8 +110,8 @@ def test_rpi_fits_tunes_and_reuses_prediction_cache(
     assert model.config["max_depth"] in (
         (4,) if backend == "client-2026-09-18" else (2, 3)
     )
-    if n_trials:
-        assert len(model.trials) == (1 if backend == "client-2026-09-18" else 2)
+    if n_trials and backend != "client-2026-09-18":
+        assert len(model.trials) == 2
         assert all(trial.val_score is not None for trial in model.trials)
     else:
         assert model.trials is None
@@ -114,10 +122,12 @@ def test_rpi_fits_tunes_and_reuses_prediction_cache(
     assert list((tmp_path / "cache").rglob("*.parquet"))
 
 
+@pytest.mark.parametrize("backend", ["local", "client"])
 def test_wrapper_default_fit_and_failed_refit(
-    query: PredictiveContext, monkeypatch: pytest.MonkeyPatch
+    query: PredictiveContext, monkeypatch: pytest.MonkeyPatch, backend: str
 ) -> None:
-    model = TabPFNRel(model="local").fit(query)
+    model = TabPFNRel(model=backend).fit(query)
+    assert model.config["max_depth"] == 4
     assert model.trials is None
     assert (
         len(

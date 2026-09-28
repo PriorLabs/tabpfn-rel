@@ -16,19 +16,37 @@ class TabPFNRel:
     def __init__(
         self,
         *,
-        model: Literal["client", "local", "client-2026-08-15", "client-2026-09-18"],
+        model: Literal[
+            "client",
+            "local",
+            "local-2026-08-15",
+            "client-2026-08-15",
+            "client-2026-09-18",
+            "client-2026-09-28",
+            "local-2026-09-28",
+        ],
     ) -> None:
         """Select the inference backend."""
-        if model not in ("client", "local", "client-2026-08-15", "client-2026-09-18"):
+        if model not in (
+            "client",
+            "local",
+            "local-2026-08-15",
+            "client-2026-08-15",
+            "client-2026-09-18",
+            "client-2026-09-28",
+            "local-2026-09-28",
+        ):
             raise ValueError(
-                "model must be 'client', 'local', 'client-2026-08-15', "
-                "or 'client-2026-09-18'."
+                "model must be 'client', 'local', 'local-2026-08-15', "
+                "'client-2026-08-15', "
+                "'client-2026-09-18', 'client-2026-09-28', "
+                "or 'local-2026-09-28'."
             )
-        self._model = (
-            "tabpfn-rel-client-2026-08-15"
-            if model == "client"
-            else f"tabpfn-rel-{model}"
-        )
+        self._model = {
+            "client": "tabpfn-rel-client-2026-09-28",
+            "local": "tabpfn-rel-local-2026-09-28",
+            "local-2026-08-15": "tabpfn-rel-local",
+        }.get(model, f"tabpfn-rel-{model}")
         self._fitted: FittedPredictor | None = None
 
     @property
