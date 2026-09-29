@@ -23,12 +23,14 @@ DFS matrix is content-cached, so the downsample / pool selection happens cheaply
 afterward (rather than being fused into a pre-DFS slice); text is handled inside
 the estimator at fit time.
 
-The local and 2026-08-15 API variants share the configuration —
+The 2026-08-15 local and API variants share the configuration —
 TabPFN v3 with hard-pool recency contexts (`K=100k`, `M=4·K`), tuned over DFS depth
-only: `tabpfn-rel-local` runs the local TabPFN v3, and
+only: `tabpfn-rel-local-2026-08-15` runs the local TabPFN v3, and
 `tabpfn-rel-client-2026-08-15` runs
 through the hosted TabPFN API with anchor-table text passed through raw.
 The 2026-09-18 API variant uses TabPFN 3.5, fixed DFS depth 4, and K=200k.
+`tabpfn-rel-client-latest` and `tabpfn-rel-local-latest` name the current
+client and local versions.
 """
 
 from __future__ import annotations
@@ -39,7 +41,7 @@ import numpy as np
 import pandas as pd
 from relarena_core.featurization import DFS_MAX_DEPTH, build_dfs_features
 from relarena_core.model import RelArenaModel
-from relarena_core.registry import register_model
+from relarena_core.registry import register_model, registry
 from relarena_core.search_space import SearchSpace
 from relarena_core.tfm import FittedTFM, predict_tfm
 from relbench.base import Database, EntityTask, Table, TaskType
@@ -197,7 +199,7 @@ class TabPFNRelModel(RelArenaModel):
 class TabPFNRelLocalModel(TabPFNRelModel):
     """`tabpfn-rel` on the local TabPFN v3, without text features."""
 
-    name = "tabpfn-rel-local"
+    name = "tabpfn-rel-local-2026-08-15"
 
 
 @register_model(search_space=TABPFN_REL_CLIENT_SPACE)
@@ -289,3 +291,7 @@ class TabPFNRelLocal20260928Model(TabPFNRelV35Model):
     """Local TabPFN 3.5 with native TF-IDF."""
 
     name = "tabpfn-rel-local-2026-09-28"
+
+
+registry.register_alias("tabpfn-rel-client-latest", TabPFNRelClient20260928Model.name)
+registry.register_alias("tabpfn-rel-local-latest", TabPFNRelLocal20260928Model.name)

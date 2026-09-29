@@ -13,7 +13,7 @@ license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11,<3.13"
 keywords = ["tabpfn", "relational-learning", "machine-learning", "tabular-data"]
 dependencies = [
-    "relarena-core>=0.0.4,<0.1",
+    "relarena-core>=0.0.5,<0.1",
     "numpy>=1.24",
     "pandas>=2.3.3,<3.0",
     "relbench==2.1.2",
@@ -24,20 +24,22 @@ Repository = "https://github.com/PriorLabs/tabpfn-rel"
 Issues = "https://github.com/PriorLabs/tabpfn-rel/issues"
 
 [project.optional-dependencies]
-local = ["tabpfn>=9.0.0", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.4,<0.1"]
-api = ["tabpfn-client>=0.6.1", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.4,<0.1"]
+local = ["tabpfn>=9.0.0", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.5,<0.1"]
+api = ["tabpfn-client>=0.6.1", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.5,<0.1"]
 
 [project.entry-points."relarena.models"]
 tabpfn_rel = "tabpfn_rel.model"
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "ruff==0.15.13", "pre-commit>=4.0", "relarena-core[dfs]>=0.0.4,<0.1"]
+dev = ["pytest>=9.1.1", "ruff==0.15.13", "pre-commit>=4.0", "relarena-core[dfs]>=0.0.5,<0.1"]
 
 cpu = ["torch"]
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { relarena-core = false, tabpfn-client = false }
+# fastdfs has a fixed cutoff that admits 1.2, the core DFS floor, before the 3-day
+# window ends; remove it after 2026-10-01 to restore the rolling cutoff.
+exclude-newer-package = { relarena-core = false, tabpfn-client = false, fastdfs = "2026-09-29T00:00:00Z" }
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu", group = "cpu" }]

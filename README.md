@@ -111,7 +111,9 @@ uses TabPFN 3.5 with native TF-IDF. Their explicit recipe selectors are:
 | Local, native TF-IDF text | `local-2026-09-28` |
 
 Prefix the selector with `tabpfn-rel-` to use it
-as a RelArena model ID. To use the previous defaults, explicitly select
+as a RelArena model ID. `tabpfn-rel-client-latest` and
+`tabpfn-rel-local-latest` are RelArena aliases for the current versions;
+results record the dated ID. To use the previous defaults, explicitly select
 `model="client-2026-08-15"` or `model="local-2026-08-15"`.
 
 Both query fields are required. Use `at_timestamp="test_timestamp"` for the

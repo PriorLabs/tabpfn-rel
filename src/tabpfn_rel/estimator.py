@@ -43,9 +43,8 @@ class TabPFNRel:
                 "or 'local-2026-09-28'."
             )
         self._model = {
-            "client": "tabpfn-rel-client-2026-09-28",
-            "local": "tabpfn-rel-local-2026-09-28",
-            "local-2026-08-15": "tabpfn-rel-local",
+            "client": "tabpfn-rel-client-latest",
+            "local": "tabpfn-rel-local-latest",
         }.get(model, f"tabpfn-rel-{model}")
         self._fitted: FittedPredictor | None = None
 

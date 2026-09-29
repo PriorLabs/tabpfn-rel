@@ -42,8 +42,10 @@ _N = 100
 
 def test__local_space__default_is_the_validated_config() -> None:
     discover_models()
-    assert registry.get("tabpfn-rel-local") is TabPFNRelLocalModel
-    assert registry.search_space("tabpfn-rel-local") is TABPFN_REL_LOCAL_SPACE
+    assert registry.get("tabpfn-rel-local-2026-08-15") is TabPFNRelLocalModel
+    assert (
+        registry.search_space("tabpfn-rel-local-2026-08-15") is TABPFN_REL_LOCAL_SPACE
+    )
     default = TABPFN_REL_LOCAL_SPACE.default_overrides
     assert default == {
         "tfm": "tabpfn-v3",
