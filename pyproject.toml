@@ -37,7 +37,9 @@ cpu = ["torch"]
 
 [tool.uv]
 exclude-newer = "3 days"
-exclude-newer-package = { relarena-core = false, tabpfn-client = false }
+# fastdfs has a fixed cutoff that admits 1.2, the core DFS floor, before the 3-day
+# window ends; remove it after 2026-10-01 to restore the rolling cutoff.
+exclude-newer-package = { relarena-core = false, tabpfn-client = false, fastdfs = "2026-09-29T00:00:00Z" }
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu", group = "cpu" }]
