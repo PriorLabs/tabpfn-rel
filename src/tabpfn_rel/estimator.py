@@ -26,7 +26,12 @@ class TabPFNRel:
             "local-2026-09-28",
         ],
     ) -> None:
-        """Select the inference backend."""
+        """Select the inference backend.
+
+        Args:
+            model: `"client"` (hosted API) or `"local"` for the latest recipe; a
+                dated selector such as `"client-2026-09-28"` pins one.
+        """
         if model not in (
             "client",
             "local",
@@ -66,7 +71,15 @@ class TabPFNRel:
         seed: int = 0,
         cache_dir: str | Path | None = None,
     ) -> TabPFNRel:
-        """Fit a model on the context and return self."""
+        """Fit a model on the context and return self.
+
+        Args:
+            context: The database and training task.
+            n_trials: Tuning trials; `0` fits the default configuration. Hosted
+                trials use API quota.
+            seed: Random seed for tuning and fitting.
+            cache_dir: Directory for cached DFS features, reused by `predict`.
+        """
         self._fitted = None
         self._fitted = context.fit(
             self._model, n_trials=n_trials, seed=seed, cache_dir=cache_dir
@@ -76,7 +89,15 @@ class TabPFNRel:
     def predict(
         self, query: PredictiveQuery, *, cache_dir: str | Path | None = None
     ) -> pd.DataFrame:
-        """Predict the query's entities and timestamp using the fitted context."""
+        """Predict the query's entities and timestamp using the fitted context.
+
+        Args:
+            query: The entities and anchor timestamp to predict.
+            cache_dir: Feature cache; `None` reuses the one passed to `fit`.
+
+        Returns:
+            One row per entity: the time and entity columns and `<target_col>_pred`.
+        """
         if self._fitted is None:
             raise RuntimeError("Call fit(...) before predict().")
         return self._fitted.predict(query, cache_dir=cache_dir)
