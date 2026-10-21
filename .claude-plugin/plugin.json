@@ -1,0 +1,9 @@
+{
+  "name": "tabpfn-rel",
+  "description": "Agent skill for relational prediction with TabPFN-Rel: inspect a database, write the task files, check the labels and compare TabPFN-Rel with baselines.",
+  "author": { "name": "Prior Labs" },
+  "homepage": "https://docs.priorlabs.ai/capabilities/relational",
+  "repository": "https://github.com/PriorLabs/tabpfn-rel",
+  "license": "Apache-2.0",
+  "skills": ["./.claude/skills/"]
+}

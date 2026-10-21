@@ -14,7 +14,8 @@ description: >
 # Predict over a relational database with TabPFN-Rel
 
 The user brings tables and a question. The result is this layout in a working
-directory of the user's choice (default `data/<name>/`, which git ignores):
+directory of the user's choice (default `data/<name>/`; keep it out of version
+control):
 
 ```
 data/<name>/
@@ -24,6 +25,10 @@ data/<name>/
   database.yaml         schema: keys, time columns, kept columns
   <task>.yaml           label SQL, prediction window, split timestamps
 ```
+
+`<skill-dir>` below is the directory that holds this file. Its scripts are in
+`<skill-dir>/scripts/`; run them from the working directory with the user's
+Python environment.
 
 Read these references when the step says so:
 
@@ -50,13 +55,20 @@ Read these references when the step says so:
 
 ## Steps
 
-1. **Set up.** In the repository, run
-   `uv sync --extra api --group cpu --group baselines`; the `baselines` group
-   holds the constant and LightGBM baselines. On macOS,
-   prefix every Python command with `OMP_NUM_THREADS=1` (torch and LightGBM ship
-   separate OpenMP runtimes, and LightGBM segfaults if torch loads first). For
-   hosted inference, `TABPFN_TOKEN` must be set or `tabpfn_client.init()` run
-   once.
+1. **Set up.** Install TabPFN-Rel and the baselines with Python 3.11 or 3.12:
+
+   ```bash
+   pip install "tabpfn-rel[api]" "relarena[lightgbm]>=0.1.4,<0.2"
+   ```
+
+   For local inference, install `tabpfn-rel[local]` instead of
+   `tabpfn-rel[api]`. `relarena` holds the constant and LightGBM baselines.
+   Inside a checkout of the tabpfn-rel repository, run
+   `uv sync --extra api --group cpu --group baselines` instead and prefix the
+   commands below with `uv run --no-sync`. On macOS, prefix every Python command
+   with `OMP_NUM_THREADS=1` (torch and LightGBM ship separate OpenMP runtimes,
+   and LightGBM segfaults if torch loads first). For hosted inference,
+   `TABPFN_TOKEN` must be set or `tabpfn_client.init()` run once.
 
 2. **Get and inspect the raw data.** Download into `raw/` and record the URL,
    date, licence and file sizes. If the tables come in another format (XML,
@@ -66,7 +78,7 @@ Read these references when the step says so:
    uses. Then profile every table and column:
 
    ```bash
-   OMP_NUM_THREADS=1 uv run --no-sync python .claude/skills/relational-prediction/scripts/profile_tables.py data/<name>/raw
+   OMP_NUM_THREADS=1 python <skill-dir>/scripts/profile_tables.py data/<name>/raw
    ```
 
    Then work through
@@ -99,7 +111,7 @@ Read these references when the step says so:
    [task-definition.md](references/task-definition.md). Then run:
 
    ```bash
-   OMP_NUM_THREADS=1 uv run --no-sync python .claude/skills/relational-prediction/scripts/check_task.py data/<name>/<task>.yaml
+   OMP_NUM_THREADS=1 python <skill-dir>/scripts/check_task.py data/<name>/<task>.yaml
    ```
 
    Pass `--data-end <date>` when the label's source table ends earlier than the
@@ -111,7 +123,7 @@ Read these references when the step says so:
 7. **Compare TabPFN-Rel with baselines.**
 
    ```bash
-   OMP_NUM_THREADS=1 uv run --no-sync python .claude/skills/relational-prediction/scripts/compare_models.py data/<name>/<task>.yaml
+   OMP_NUM_THREADS=1 python <skill-dir>/scripts/compare_models.py data/<name>/<task>.yaml
    ```
 
    It fits three baselines and TabPFN-Rel and prints their test metrics:

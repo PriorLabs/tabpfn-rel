@@ -1,0 +1,10 @@
+{
+  "name": "prior-labs",
+  "owner": { "name": "Prior Labs" },
+  "plugins": [
+    {
+      "name": "tabpfn-rel",
+      "source": "./"
+    }
+  ]
+}
