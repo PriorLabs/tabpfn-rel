@@ -126,6 +126,33 @@ entering predictions. See
 To benchmark TabPFN-Rel against other methods, see
 [RelArena](https://github.com/PriorLabs/relarena).
 
+## Let a coding agent set it up
+
+The `relational-prediction` agent skill guides Claude Code or Codex from raw
+tables and a plain-language question to a scored TabPFN-Rel task. The agent
+inspects the tables, prepares them without leaking future information, writes
+both YAML files, checks the labels and compares TabPFN-Rel with simple
+baselines. It asks you before it changes data or picks the task.
+
+Claude Code:
+
+```
+/plugin marketplace add PriorLabs/tabpfn-rel
+/plugin install tabpfn-rel@prior-labs
+```
+
+Codex:
+
+```bash
+codex plugin marketplace add PriorLabs/tabpfn-rel
+codex plugin add tabpfn-rel@prior-labs
+```
+
+Then ask the agent a question about your data, for example "Which of these
+customers will stop ordering next month?". The skill runs in your Python
+environment and installs `tabpfn-rel[api]` and the
+[RelArena](https://github.com/PriorLabs/relarena) baselines there.
+
 ## Development
 
 ```bash

@@ -1,0 +1,7 @@
+{
+  "name": "tabpfn-rel",
+  "version": "0.1.0",
+  "description": "Agent skill for relational prediction with TabPFN-Rel: inspect a database, write the task files, check the labels and compare TabPFN-Rel with baselines.",
+  "author": { "name": "Prior Labs" },
+  "skills": "./.claude/skills"
+}
