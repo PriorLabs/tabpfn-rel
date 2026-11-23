@@ -24,7 +24,9 @@ Repository = "https://github.com/PriorLabs/tabpfn-rel"
 Issues = "https://github.com/PriorLabs/tabpfn-rel/issues"
 
 [project.optional-dependencies]
-local = ["tabpfn>=9.0.0", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.6,<0.1"]
+# tabpfn>=9.1 because earlier releases crash when a column that is entirely
+# missing at fit holds strings at predict.
+local = ["tabpfn>=9.1", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.6,<0.1"]
 api = ["tabpfn-client>=0.6.1", "tabpfn-extensions>=0.6.3", "relarena-core[dfs]>=0.0.6,<0.1"]
 
 [project.entry-points."relarena.models"]
